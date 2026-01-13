@@ -22,6 +22,7 @@ import com.ctre.phoenix6.signals.ForwardLimitSourceValue;
 import com.ctre.phoenix6.signals.ForwardLimitTypeValue;
 import com.ctre.phoenix6.signals.ForwardLimitValue;
 import com.ctre.phoenix6.signals.InvertedValue;
+import com.ctre.phoenix6.signals.MotorAlignmentValue;
 import com.ctre.phoenix6.signals.NeutralModeValue;
 import com.ctre.phoenix6.signals.ReverseLimitSourceValue;
 import com.ctre.phoenix6.signals.ReverseLimitTypeValue;
@@ -147,7 +148,7 @@ public class Elevator extends SubsystemBase implements IElevator {
 		elevatorConfig = new TalonFXConfiguration();
 		elevator_followerConfig = new TalonFXConfiguration();
 
-		elevator_follower.setControl(new Follower(elevator.getDeviceID(), true));
+		elevator_follower.setControl(new Follower(elevator.getDeviceID(),MotorAlignmentValue.Opposed)); // second argument of Follower's constructor was "true" in 2025
 
 		//elevator.getConfigurator().apply(elevatorConfig);
 		//elevator_follower.getConfigurator().apply(elevator_followerConfig);
