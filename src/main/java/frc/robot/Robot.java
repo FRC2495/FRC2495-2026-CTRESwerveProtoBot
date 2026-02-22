@@ -10,8 +10,7 @@ import edu.wpi.first.wpilibj.TimedRobot;
 import edu.wpi.first.wpilibj.smartdashboard.SmartDashboard;
 import edu.wpi.first.wpilibj2.command.Command;
 import edu.wpi.first.wpilibj2.command.CommandScheduler;
-//import frc.robot.subsystems.Slider;
-import frc.robot.interfaces.ICamera;
+import frc.robot.utils.HubActiveState;
 
 import java.util.Optional;
 
@@ -32,6 +31,7 @@ public class Robot extends TimedRobot {
 	private Command m_autonomousCommand;
 
 	private RobotContainer m_robotContainer;
+	private final HubActiveState m_hubInstance = HubActiveState.getInstance();
 
 	/**
 	 * This function is run when the robot is first started up and should be used for any
@@ -54,7 +54,7 @@ public class Robot extends TimedRobot {
 
 		SmartDashboard.putData("Swerve Odometry", m_robotContainer.getField());		
 
-		FollowPathCommand.warmupCommand().schedule(); 
+		CommandScheduler.getInstance().schedule(FollowPathCommand.warmupCommand());
 
 		CanandEventLoop.getInstance();
 	}
@@ -68,24 +68,16 @@ public class Robot extends TimedRobot {
 	 */
 	@Override
 	public void robotPeriodic() {
+
+		m_robotContainer.periodic();
+		m_hubInstance.periodic();
+
 		// Runs the Scheduler.  This is responsible for polling buttons, adding newly-scheduled
 		// commands, running already-scheduled commands, removing finished or interrupted commands,
 		// and running subsystem periodic() methods.  This must be called from the robot's periodic
 		// block in order for anything in the Command-based framework to work.
 		CommandScheduler.getInstance().run();
-		
-		if (m_robotContainer.getAprilTagCamera() != null) 
-		{
-			m_robotContainer.getAprilTagCamera().updateCacheResults();
-			Optional<EstimatedRobotPose> result = m_robotContainer.getAprilTagCamera().getGlobalPose();
-
-			if (result.isPresent() && m_robotContainer.getVisionCorrectionEnablement())
-			{
-				// calls the overriden version of addVisionMeasurement() that internally calls Utils.fpgaToCurrentTime() to use the correct time base
-				m_robotContainer.getDrivetrain().addVisionMeasurement(result.get().estimatedPose.toPose2d(), result.get().timestampSeconds);
-			}
-		}
-
+	
 	}
 
 	/** This function is called once each time the robot enters Disabled mode. */
@@ -99,6 +91,9 @@ public class Robot extends TimedRobot {
 
 		updateToSmartDash();
 	}
+
+	@Override
+    public void disabledExit() {}
 
 	/** This autonomous runs the autonomous command selected by your {@link RobotContainer} class. */
 	@Override
@@ -114,7 +109,7 @@ public class Robot extends TimedRobot {
 
 		// schedule the autonomous command (example)
 		if (m_autonomousCommand != null) {
-			m_autonomousCommand.schedule();
+            CommandScheduler.getInstance().schedule(m_autonomousCommand);
 		}
 	}
 
@@ -126,13 +121,16 @@ public class Robot extends TimedRobot {
 	}
 
 	@Override
+    public void autonomousExit() {}
+
+	@Override
 	public void teleopInit() {
 		// This makes sure that the autonomous stops running when
 		// teleop starts running. If you want the autonomous to
 		// continue until interrupted by another command, remove
 		// this line or comment it out.
 		if (m_autonomousCommand != null) {
-			m_autonomousCommand.cancel();
+            CommandScheduler.getInstance().cancel(m_autonomousCommand);
 		}
 	}
 
@@ -144,6 +142,9 @@ public class Robot extends TimedRobot {
 
 		updateToSmartDash();
 	}
+
+	@Override
+    public void teleopExit() {}
 
 	public void updateToSmartDash()
 	{
@@ -211,70 +212,16 @@ public class Robot extends TimedRobot {
 		SmartDashboard.putNumber("AccurateRoll", m_robotContainer.getAccelerometer().getAccurateRoll());
 		//SmartDashboard.putNumber("FilteredAccurateRoll", m_robotContainer.getAccelerometer().getFilteredAccurateRoll());
 
-		/*SmartDashboard.putNumber("Distance to Target", m_robotContainer.getCamera().getDistanceToCompositeTargetUsingVerticalFov());
-		SmartDashboard.putNumber("Angle to Target", m_robotContainer.getCamera().getAngleToTurnToCompositeTarget());
-		SmartDashboard.putNumber("Distance to Target Using Horizontal FOV", m_robotContainer.getCamera().getDistanceToCompositeTargetUsingHorizontalFov());
-		SmartDashboard.putNumber("Filtered Distance to Target", m_robotContainer.getCamera().getFilteredDistanceToCompositeTarget());
-		SmartDashboard.putNumber("Vertical Offset to Target", m_robotContainer.getCamera().getVerticalOffsetToCompositeTarget());
-		SmartDashboard.putNumber("Filtered Vertical Offset to Target", m_robotContainer.getCamera().getFilteredVerticalOffsetToCompositeTarget());*/
-
-		SmartDashboard.putNumber("Distance to AprilTag", m_robotContainer.getAprilTagCamera().getDistanceToTarget());
-		SmartDashboard.putNumber("Angle to AprilTag", m_robotContainer.getAprilTagCamera().getAngleToTurnToTarget());
-		SmartDashboard.putBoolean("At Left Scoring Position?", m_robotContainer.getAprilTagCamera().isAtLeftScoringPosition());
-		SmartDashboard.putBoolean("At Right Scoring Position?", m_robotContainer.getAprilTagCamera().isAtRightScoringPosition());
-		//SmartDashboard.putNumber("Latest AprilTag ID", m_robotContainer.getAprilTagCamera().getLatestID());
-
-		SmartDashboard.putBoolean("Elevator Forward Limit Switch", m_robotContainer.getElevator().getForwardLimitSwitchState());
-		SmartDashboard.putBoolean("Elevator Reverse Limit Switch", m_robotContainer.getElevator().getReverseLimitSwitchState());
-		SmartDashboard.putNumber("Elevator Enc Position", m_robotContainer.getElevator().getEncoderPosition());
-		SmartDashboard.putBoolean("Elevator IsMoving?", m_robotContainer.getElevator().isMoving());
-		SmartDashboard.putNumber("Elevator Target", m_robotContainer.getElevator().getTarget());
-		SmartDashboard.putBoolean("Elevator isStalled?", m_robotContainer.getElevator().isStalled());
-		SmartDashboard.putBoolean("Elevator isDown", m_robotContainer.getElevator().isDown());
-		SmartDashboard.putBoolean("Elevator isMidway", m_robotContainer.getElevator().isMidway());
-		SmartDashboard.putBoolean("Elevator isUp", m_robotContainer.getElevator().isUp());
-		SmartDashboard.putBoolean("Elevator isDangerous", m_robotContainer.getElevator().isDangerous());
-
-		SmartDashboard.putBoolean("Neck Reverse Limit Switch", m_robotContainer.getNeck().getReverseLimitSwitchState());
-		SmartDashboard.putBoolean("Neck Forward Limit Switch", m_robotContainer.getNeck().getForwardLimitSwitchState());
-		SmartDashboard.putNumber("Neck Position", m_robotContainer.getNeck().getPosition());
-		SmartDashboard.putNumber("Neck Enc Position", m_robotContainer.getNeck().getEncoderPosition());
-		SmartDashboard.putBoolean("Neck IsMoving?", m_robotContainer.getNeck().isMoving());
-		SmartDashboard.putBoolean("Neck IsHoming?", m_robotContainer.getNeck().isHoming());
-		SmartDashboard.putNumber("Neck Target", m_robotContainer.getNeck().getTarget());
-		SmartDashboard.putBoolean("Neck isStalled?", m_robotContainer.getNeck().isStalled());
-		SmartDashboard.putBoolean("Neck isDown", m_robotContainer.getNeck().isDown());
-		SmartDashboard.putBoolean("Neck isMidway", m_robotContainer.getNeck().isMidway());
-		SmartDashboard.putBoolean("Neck isUp", m_robotContainer.getNeck().isUp());
-
-		SmartDashboard.putBoolean("CoralRoller IsRolling?", m_robotContainer.getCoralRoller().isRolling());
-		SmartDashboard.putBoolean("CoralRoller IsReleasing?", m_robotContainer.getCoralRoller().isReleasing());
-		SmartDashboard.putBoolean("CoralRoller IsShooting?", m_robotContainer.getCoralRoller().isShooting());
-		SmartDashboard.putBoolean("CoralRoller IsMoving?", m_robotContainer.getCoralRoller().isMoving());
-		SmartDashboard.putNumber("CoralRoller Enc Position", m_robotContainer.getCoralRoller().getEncoderPosition());
-		SmartDashboard.putNumber("CoralRoller Enc Velocity", m_robotContainer.getCoralRoller().getEncoderVelocity());
-		SmartDashboard.putNumber("CoralRoller Rpm", m_robotContainer.getCoralRoller().getRpm());
-		SmartDashboard.putNumber("CoralRoller Preset Rpm", m_robotContainer.getCoralRoller().getPresetRpm());
-		SmartDashboard.putNumber("CoralRoller Target", m_robotContainer.getCoralRoller().getTarget());
-		SmartDashboard.putBoolean("CoralRoller HasCoral", m_robotContainer.getCoralRoller().hasCoralEntered());
-
-		SmartDashboard.putBoolean("AlgaeRoller IsRolling?", m_robotContainer.getAlgaeRoller().isRolling());
-		SmartDashboard.putBoolean("AlgaeRoller IsReleasing?", m_robotContainer.getAlgaeRoller().isReleasing());
-		SmartDashboard.putBoolean("AlgaeRoller IsShooting?", m_robotContainer.getAlgaeRoller().isShooting());
-		SmartDashboard.putBoolean("AlgaeRoller IsMoving?", m_robotContainer.getAlgaeRoller().isMoving());
-		SmartDashboard.putNumber("AlgaeRoller Enc Position", m_robotContainer.getAlgaeRoller().getEncoderPosition());
-		SmartDashboard.putNumber("AlgaeRoller Enc Velocity", m_robotContainer.getAlgaeRoller().getEncoderVelocity());
-		SmartDashboard.putNumber("AlgaeRoller Rpm", m_robotContainer.getAlgaeRoller().getRpm());
-		SmartDashboard.putNumber("AlgaeRoller Preset Rpm", m_robotContainer.getAlgaeRoller().getPresetRpm());
-		SmartDashboard.putNumber("AlgaeRoller Target", m_robotContainer.getAlgaeRoller().getTarget());
-
-		SmartDashboard.putBoolean("Slider Limit Switch", m_robotContainer.getSlider().getForwardLimitSwitchState());
-		SmartDashboard.putBoolean("Slider Reverse Limit Switch", m_robotContainer.getSlider().getReverseLimitSwitchState());
-		SmartDashboard.putBoolean("Slider IsMoving?", m_robotContainer.getSlider().isMoving());
-		SmartDashboard.putBoolean("Slider isStalled?", m_robotContainer.getSlider().isStalled());
-		SmartDashboard.putBoolean("Slider isRetracted", m_robotContainer.getSlider().isRetracted());
-		SmartDashboard.putBoolean("Slider isMidway", m_robotContainer.getSlider().isMidway());
-		SmartDashboard.putBoolean("Slider isExtended", m_robotContainer.getSlider().isExtended());
+		SmartDashboard.putBoolean("Roller IsRolling?", m_robotContainer.getRoller().isRolling());
+		SmartDashboard.putBoolean("Roller IsReleasing?", m_robotContainer.getRoller().isReleasing());
+		SmartDashboard.putBoolean("Roller IsShooting?", m_robotContainer.getRoller().isShooting());
+		SmartDashboard.putBoolean("Roller IsMoving?", m_robotContainer.getRoller().isMoving());
+		SmartDashboard.putNumber("Roller Enc Position", m_robotContainer.getRoller().getEncoderPosition());
+		SmartDashboard.putNumber("Roller Enc Velocity", m_robotContainer.getRoller().getEncoderVelocity());
+		SmartDashboard.putNumber("Roller Rpm", m_robotContainer.getRoller().getRpm());
+		SmartDashboard.putNumber("Roller Preset Rpm", m_robotContainer.getRoller().getPresetRpm());
+		SmartDashboard.putNumber("Roller Target", m_robotContainer.getRoller().getTarget());
+		SmartDashboard.putBoolean("Roller HasFuel", m_robotContainer.getRoller().hasFuelEntered());
 
 		SmartDashboard.putBoolean("Hanger Forward Limit Switch", m_robotContainer.getHanger().getForwardLimitSwitchState());
 		SmartDashboard.putBoolean("Hanger Reverse Limit Switch", m_robotContainer.getHanger().getReverseLimitSwitchState());
@@ -312,4 +259,8 @@ public class Robot extends TimedRobot {
 	/** This function is called periodically during test mode. */
 	@Override
 	public void testPeriodic() {}
+
+	@Override
+    public void testExit() {}
+
 }
