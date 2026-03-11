@@ -7,7 +7,13 @@
         {
           "type": "path",
           "data": {
-            "pathName": "NEW SPB3 to Depot"
+            "pathName": "NEW SPB1 to Score"
+          }
+        },
+        {
+          "type": "path",
+          "data": {
+            "pathName": "NEW Score to Depot"
           }
         },
         {
